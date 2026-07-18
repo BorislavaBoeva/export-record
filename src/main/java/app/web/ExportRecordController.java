@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/export")
+@RequestMapping("/api/v1/export")
 public class ExportRecordController {
     private final ExportRecordService exportRecordService;
 

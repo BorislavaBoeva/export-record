@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface ExportRecordRepository extends JpaRepository<ExportRecord, UUID> {
-    Optional<ExportRecord> findByFileName(String fileName);
+    Optional<ExportRecord> findByUserIdAndFileName(UUID userId, String fileName);
     List<ExportRecord> findAllByUserIdAndDeletedFalse(UUID userId);
     List<ExportRecord> findAllByUserIdAndExportStatusAndDeletedFalse(UUID userId, ExportStatus status);
 }

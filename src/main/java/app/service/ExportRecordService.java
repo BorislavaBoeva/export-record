@@ -8,6 +8,7 @@ import app.web.dto.ExportCreateRequestDto;
 import app.web.dto.ExportResponseDto;
 import app.web.dto.ExportUpdateRequestDto;
 import app.web.mapper.ExportRecordMapper;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class ExportRecordService {
     private final ExportRecordRepository exportRepository;
 
