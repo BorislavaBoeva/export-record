@@ -16,7 +16,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String X_API_KEY = "X-API-Key";
-    @Value("${export.service.api-key}")
+    @Value("${export-record.service.api-key}")
     private String validApiKey;
 
     @Override
