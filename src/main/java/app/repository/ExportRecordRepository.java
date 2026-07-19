@@ -6,12 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ExportRecordRepository extends JpaRepository<ExportRecord, UUID> {
-    Optional<ExportRecord> findByUserIdAndFileName(UUID userId, String fileName);
     List<ExportRecord> findAllByUserIdAndDeletedFalse(UUID userId);
     List<ExportRecord> findAllByUserIdAndExportStatusAndDeletedFalse(UUID userId, ExportStatus status);
 }

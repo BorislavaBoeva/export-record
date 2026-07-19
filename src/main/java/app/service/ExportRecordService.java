@@ -25,37 +25,26 @@ public class ExportRecordService {
     public ExportRecordService(ExportRecordRepository exportRecordRepository) {
         this.exportRepository = exportRecordRepository;
     }
-    public ExportResponseDto create(ExportCreateRequestDto createDto) {
-        //1.DTO → Entity
-        ExportRecord record = ExportRecordMapper.toEntity(createDto);
 
-        //2.Set system-managed fields
+    public ExportResponseDto create(ExportCreateRequestDto createDto) {
+        ExportRecord record = ExportRecordMapper.toEntity(createDto);
         record.setExportDate(LocalDateTime.now());
         record.setUpdatedOn(LocalDateTime.now());
         record.setDeleted(false);
-        // exportStatus вече идва от createDto през toEntity(), не се override-ва тук
-
-        //3.Entity → DB
         ExportRecord saved = exportRepository.save(record);
-
-        //4.Return the created record Entity → DTO
         return ExportRecordMapper.toDto(saved);
     }
-    //Прието и за двете. Ето финалната версия на getById:
-   public ExportResponseDto getById(UUID id, UUID requestingUserId) {
+
+    public ExportResponseDto getById(UUID id, UUID requestingUserId) {
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new ExportRecordNotFoundException("Export record not found"));
-
-        // Soft-deleted records are treated as non-existent
         if (record.isDeleted()) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         // Return 404, not 403, to avoid confirming the record's existence to a non-owner
         if (!record.getUserId().equals(requestingUserId)) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         return ExportRecordMapper.toDto(record);
     }
 
@@ -69,15 +58,12 @@ public class ExportRecordService {
     public ExportResponseDto update(UUID id, ExportUpdateRequestDto updateDto, UUID requestingUserId) {
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new ExportRecordNotFoundException("Export record not found"));
-
         if (record.isDeleted()) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         if (!record.getUserId().equals(requestingUserId)) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         ExportRecordMapper.updateEntityFromDto(record, updateDto);
         record.setUpdatedOn(LocalDateTime.now());
 
@@ -95,15 +81,12 @@ public class ExportRecordService {
     public ExportResponseDto retry(UUID id, ExportStatus newStatus, UUID requestingUserId) {
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new ExportRecordNotFoundException("Export record not found"));
-
         if (record.isDeleted()) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         if (!record.getUserId().equals(requestingUserId)) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         record.setExportStatus(newStatus);
         record.setUpdatedOn(LocalDateTime.now());
 
@@ -111,18 +94,15 @@ public class ExportRecordService {
         return ExportRecordMapper.toDto(saved);
     }
 
-     public void delete(UUID id, UUID requestingUserId) {
+    public void delete(UUID id, UUID requestingUserId) {
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new ExportRecordNotFoundException("Export record not found"));
-
         if (record.isDeleted()) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         if (!record.getUserId().equals(requestingUserId)) {
             throw new ExportRecordNotFoundException("Export record not found");
         }
-
         record.setDeleted(true);
         record.setUpdatedOn(LocalDateTime.now());
         exportRepository.save(record);

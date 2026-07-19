@@ -13,7 +13,7 @@ public class ApiKeyAuthentication implements Authentication {
     private boolean authenticated = true;
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<GrantedAuthority> getAuthorities() {
         return List.of();
     }
 
