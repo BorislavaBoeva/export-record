@@ -96,4 +96,9 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 null);
     }
+    @ExceptionHandler(DuplicateExportException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateExportException ex,
+                                                         HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null);
+    }
 }

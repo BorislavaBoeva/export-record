@@ -1,5 +1,6 @@
 package app.service;
 
+import app.exception.DuplicateExportException;
 import app.exception.ExportRecordNotFoundException;
 import app.model.ExportRecord;
 import app.model.ExportStatus;
@@ -27,7 +28,19 @@ public class ExportRecordService {
     }
 
     public ExportResponseDto create(ExportCreateRequestDto createDto) {
+        boolean recentDuplicateExists = exportRepository
+                .existsByUserIdAndExportTypeAndDeletedFalseAndExportDateAfter(
+                        createDto.getUserId(),
+                        createDto.getExportType(),
+                        LocalDateTime.now().minusSeconds(5)
+                );
+        if (recentDuplicateExists) {
+            throw new DuplicateExportException("An export request was already submitted moments ago");
+        }
+
+
         ExportRecord record = ExportRecordMapper.toEntity(createDto);
+
         record.setExportDate(LocalDateTime.now());
         record.setUpdatedOn(LocalDateTime.now());
         record.setDeleted(false);
