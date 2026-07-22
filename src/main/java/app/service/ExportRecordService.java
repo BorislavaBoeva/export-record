@@ -61,7 +61,7 @@ public class ExportRecordService {
         return ExportRecordMapper.toDto(record);
     }
 
-    public List<ExportResponseDto> getAllByUserId(UUID userId) {
+    public List<ExportResponseDto> getHistory(UUID userId) {
         return exportRepository.findAllByUserIdAndDeletedFalse(userId)
                 .stream()
                 .map(ExportRecordMapper::toDto)

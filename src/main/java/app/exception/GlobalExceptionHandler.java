@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred",
+                "An unexpected error occurred" + ex.getMessage(),
                 request.getRequestURI(),
                 null);
     }
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMalformedJson(HttpMessageNotReadableException ex,
                                                              HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST,
-                "Malformed request body",
+                "Malformed request body: " + ex.getMessage(),
                 request.getRequestURI(),
                 null);
     }

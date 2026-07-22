@@ -37,8 +37,8 @@ public class ExportRecordController {
         return ResponseEntity.ok(exportRecordService.getById(id, userId));
     }
     @GetMapping
-    public ResponseEntity<List<ExportResponseDto>> getAllByUser(@RequestParam UUID userId) {
-        return ResponseEntity.ok(exportRecordService.getAllByUserId(userId));
+    public ResponseEntity<List<ExportResponseDto>> getHistory(@RequestParam UUID userId) {
+        return ResponseEntity.ok(exportRecordService.getHistory(userId));
     }
 
     @GetMapping("/failed")
