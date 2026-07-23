@@ -54,16 +54,17 @@ public class ExportRecordController {
     }
 
     @PutMapping("/{id}/retry")
-    public ResponseEntity<ExportResponseDto> retry(@PathVariable UUID id,
-                                                   @RequestParam ExportStatus status,
-                                                   @RequestParam UUID userId) {
-        return ResponseEntity.ok(exportRecordService.retry(id, status, userId));
+    public ResponseEntity<Void> retry(@PathVariable UUID id,
+                                      @RequestParam ExportStatus status,
+                                      @RequestParam UUID userId) {
+        exportRecordService.retry(id, status, userId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id,
                                        @RequestParam UUID userId) {
         exportRecordService.delete(id, userId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).build();
     }
 }

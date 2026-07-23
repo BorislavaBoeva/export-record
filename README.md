@@ -11,35 +11,37 @@ as a durable record, enabling history browsing, retrying failed exports, and saf
 - [Architecture](#architecture)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
+- [Domain Model](#domain-model)
 - [Error Handling & Validation](#error-handling--validation)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
 - [API Endpoints](#api-endpoints)
 - [Security](#security)
-
+- [Consumed By]
 ---
 
 ## Overview
 
-The `csv-export` microservice is a companion service to the main Skill Progress Tracker application. Its sole
+The `export-record` microservice is a companion service to the main Skill Progress Tracker application. Its 
 responsibility is to persist a record of every export attempt (CSV or PDF) initiated by a user — who requested it,
-what type, whether it succeeded or failed, and when. It does **not** generate, store, or serve the actual export
-file content; that logic lives entirely in the main application, which calls this service via a Feign client after
-each export attempt.
+what type, whether it succeeded or failed, and when— and to let the user manage that history.
+It does **not** generate, store, or serve the actual export file content; that logic lives entirely in the main application,
+which calls this service via a Feign client after each export attempt. ExportRecord is user-managed: 
+every record is created, listed, edited, retried, and deleted directly in response to explicit user actions in the main application's UI.
 
 ## Architecture
 
 ```
 ┌─────────────────┐         Feign Client          ┌──────────────────┐
-│   Main App      │   ──────────────────────────▶ │   csv-export     │
+│   Main App      │   ──────────────────────────▶ │   export-record  │
 │ (skill-progress │   POST/GET/PUT/DELETE         │  microservice    │
-│  tracker)       │   /api/v1/export/**           │                  │
+│  tracker)       │   /api/v1/exportRecord/**     │                  │
 │                 │◀───────────────────────────── │                  │
 └─────────────────┘         JSON responses        └──────────────────┘
         │                                                    │
         ▼                                                    ▼
-   skill_progress_tracker DB                          csv_export DB
+   skill_progress_tracker DB                          export_record DB
    (MySQL)                                            (MySQL, separate)
 ```
 
@@ -50,8 +52,10 @@ microservice only records that outcome and exposes history/retry endpoints.
 
 - **Export History Tracking** — Every export attempt (CSV/PDF) is persisted as an `ExportRecord`, independent of
   whether the underlying generation succeeded.
-- **Retry Support** — Failed exports can be looked up via a dedicated endpoint and their status updated once the
-  main application successfully regenerates the file.
+- **Metadata Editing** — File name and description can be updated after the fact.
+- **Retry Support** — A failed export's status can be updated once the main application successfully regenerates the file.
+- **Duplicate Submission Guard** — Rejects a new export request with 409 Conflict if an identical (same user, same type)
+  request was already submitted within the last 5 seconds, protecting against accidental double-clicks.
 - **Soft Delete** — Records are never physically removed; a `deleted` flag hides them from all read operations while
   preserving the audit trail.
 - **Ownership-Safe Access** — Every read/write operation validates that the requesting user owns the record. A
@@ -77,18 +81,32 @@ microservice only records that outcome and exposes history/retry endpoints.
 | Build       | Apache Maven (Maven Wrapper included)      |
 
 ---
+## Domain Model
+ExportRecord
+
+Field	         Type	        Notes
+id	             UUID	        Primary key
+userId	         UUID	        Owner of the record
+fileName	     String         Editable
+description 	 String        	Editable, up to 1000 characters
+exportType	     ExportType	    Enum: CSV, PDF
+exportStatus	 ExportStatus	Enum: SUCCEEDED, FAILED
+exportDate	     LocalDateTime	Set once, at creation
+updatedOn	     LocalDateTime	Refreshed on every writing
+deleted        	boolean	        Soft-delete flag
 
 ## Error Handling & Validation
 
-All request DTOs are validated with Jakarta Bean Validation (`@Valid`). Validation failures return a structured
-`400 Bad Request` with per-field error messages.
+All request DTOs are validated with Jakarta Bean Validation (`@Valid`). 
+Validation failures return a structured `400 Bad Request` with per-field error messages.
 
 Business rules are enforced in the service layer through a custom exception hierarchy:
 
 - `ApplicationException` (base)
     - `EntityNotFoundException`
-        - `ExportRecordNotFoundException`
+    - `ExportRecordNotFoundException`
     - `UnauthorizedActionException`
+    - `DuplicateExportException`
 
 A centralized `GlobalExceptionHandler` (`@RestControllerAdvice`) maps every exception type to a consistent JSON
 `ErrorResponse` shape (`timestamp`, `status`, `error`, `message`, `path`, `fieldErrors`), covering not-found,
@@ -189,15 +207,15 @@ All endpoints require the `X-API-Key` header. `userId` is passed as a query para
 service has no session/login concept of its own — the caller is always the main application, which already knows
 the authenticated user).
 
-| Method | Endpoint                    | Description                                                |
-|--------|-----------------------------|------------------------------------------------------------|
-| POST   | `/api/v1/export`            | Register a new export attempt (SUCCEEDED or FAILED)        |
-| GET    | `/api/v1/export/{id}`       | Get a single export record by ID (owner only)              |
-| GET    | `/api/v1/export`            | List all non-deleted export records for a user             |
-| GET    | `/api/v1/export/failed`     | List only FAILED export records for a user                 |
-| PUT    | `/api/v1/export/{id}`       | Update editable fields (fileName, description, exportType) |
-| PUT    | `/api/v1/export/{id}/retry` | Update the status of a record after a retry attempt        |
-| DELETE | `/api/v1/export/{id}`       | Soft-delete an export record (owner only)                  |
+| Method | Endpoint                    | Status       | Description                                                                                                                              |
+|--------|-----------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `/api/v1/export`            | 201 Created  | Register a new export attempt (SUCCEEDED or FAILED)<br/<br/ rejects with 409 Conflict if a duplicate was submitted in the last 5 seconds |
+| GET    | `/api/v1/export/{id}`       | 200 OK       | Get a single export record by ID (owner only)                                                                                            |
+| GET    | `/api/v1/export`            | 200 OK       | List all non-deleted export records for a user                                                                                           |
+| GET    | `/api/v1/export/failed`     | 200 OK       | List only FAILED export records for a user                                                                                               |
+| PUT    | `/api/v1/export/{id}`       | 200 OK       | Update editable fields (fileName, description, exportType)                                                                               |
+| PUT    | `/api/v1/export/{id}/retry` | 202 Accepted | Update the status of a record after a retry attempt                                                                                      |
+| DELETE | `/api/v1/export/{id}`       | 202 Accepted | Soft-delete an export record (owner only)                                                                                                |
 
 A record that doesn't exist, is soft-deleted, or belongs to another user all returns an identical `404 Not Found`,
 by design — this prevents leaking information about which record IDs exist to a non-owner.
@@ -214,3 +232,12 @@ This service uses **stateless API key authentication**, not user login:
 - There are no user roles or permissions within this service — trust is entirely delegated to the main application,
   which is the only expected caller. End-user authentication and authorization (USER/ADMIN roles) are handled
   exclusively by the main application before it ever calls this service.
+
+## Consumed By
+
+The main Skill Progress Tracker application integrates with this service through:
+
+ExportClient — a @FeignClient interface describing the HTTP contract above
+ExportService — a thin wrapper that supplies the API key, unwraps responses, and translates Feign exceptions (FeignException.NotFound → ExportNotFoundException, FeignException.Conflict → ExportInProgressException)
+ExportFileService — generates the actual CSV/PDF content (Apache PDFBox for PDF) from the user's activity log, and orchestrates the create/retry flow around this service
+Two MVC controllers (ExportController, ExportUpdateController) rendering the export details, history, and edit pages

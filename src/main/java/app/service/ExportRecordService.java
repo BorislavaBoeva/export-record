@@ -37,10 +37,7 @@ public class ExportRecordService {
         if (recentDuplicateExists) {
             throw new DuplicateExportException("An export request was already submitted moments ago");
         }
-
-
         ExportRecord record = ExportRecordMapper.toEntity(createDto);
-
         record.setExportDate(LocalDateTime.now());
         record.setUpdatedOn(LocalDateTime.now());
         record.setDeleted(false);
@@ -91,7 +88,7 @@ public class ExportRecordService {
                 .toList();
     }
 
-    public ExportResponseDto retry(UUID id, ExportStatus newStatus, UUID requestingUserId) {
+    public void retry(UUID id, ExportStatus newStatus, UUID requestingUserId) {
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new ExportRecordNotFoundException("Export record not found"));
         if (record.isDeleted()) {
@@ -102,9 +99,7 @@ public class ExportRecordService {
         }
         record.setExportStatus(newStatus);
         record.setUpdatedOn(LocalDateTime.now());
-
-        ExportRecord saved = exportRepository.save(record);
-        return ExportRecordMapper.toDto(saved);
+        exportRepository.save(record);
     }
 
     public void delete(UUID id, UUID requestingUserId) {
