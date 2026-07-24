@@ -1,4 +1,4 @@
-# csv-export
+# export-record
 
 CSV Export Microservice
 is A standalone Spring Boot REST microservice that tracks export history for the Skill Progress Tracker application.

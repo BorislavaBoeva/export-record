@@ -1,4 +1,4 @@
-package app.web.dto;
+package app.web.dto.exportRecord;
 
 import app.model.ExportType;
 import jakarta.validation.constraints.NotBlank;

@@ -1,9 +1,9 @@
-package app.web.mapper;
+package app.web.mapper.exportRecord;
 
 import app.model.ExportRecord;
-import app.web.dto.ExportCreateRequestDto;
-import app.web.dto.ExportResponseDto;
-import app.web.dto.ExportUpdateRequestDto;
+import app.web.dto.exportRecord.ExportCreateRequestDto;
+import app.web.dto.exportRecord.ExportResponseDto;
+import app.web.dto.exportRecord.ExportUpdateRequestDto;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor

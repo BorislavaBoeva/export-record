@@ -2,9 +2,9 @@ package app.web;
 
 import app.model.ExportStatus;
 import app.service.ExportRecordService;
-import app.web.dto.ExportCreateRequestDto;
-import app.web.dto.ExportResponseDto;
-import app.web.dto.ExportUpdateRequestDto;
+import app.web.dto.exportRecord.ExportCreateRequestDto;
+import app.web.dto.exportRecord.ExportResponseDto;
+import app.web.dto.exportRecord.ExportUpdateRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

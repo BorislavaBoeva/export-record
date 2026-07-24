@@ -17,7 +17,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler({ExportRecordNotFoundException.class, EntityNotFoundException.class})
+    @ExceptionHandler({EntityNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(ApplicationException ex,
                                                         HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred" + ex.getMessage(),
+                "An unexpected error occurred " + ex.getMessage(),
                 request.getRequestURI(),
                 null);
     }

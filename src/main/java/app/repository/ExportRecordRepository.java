@@ -18,4 +18,7 @@ public interface ExportRecordRepository extends JpaRepository<ExportRecord, UUID
                                                             UUID userId,
                                                             ExportType exportType,
                                                             LocalDateTime after);
+
+    List<ExportRecord> findAllByDeletedTrueAndUpdatedOnBefore(LocalDateTime threshold);
+
 }
