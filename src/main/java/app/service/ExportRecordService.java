@@ -12,6 +12,8 @@ import app.web.dto.exportRecord.ExportUpdateRequestDto;
 import app.web.mapper.exportRecord.ExportRecordMapper;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -47,6 +49,7 @@ public class ExportRecordService {
         return ExportRecordMapper.toDto(saved);
     }
 
+    @Cacheable(value = "exportRecordById", key = "#id")
     public ExportResponseDto getById(UUID id, UUID requestingUserId) {
         ExportRecord record = findOwnedRecordOrThrow(id, requestingUserId);
         return ExportRecordMapper.toDto(record);
@@ -59,7 +62,7 @@ public class ExportRecordService {
                 .map(ExportRecordMapper::toDto)
                 .toList();
     }
-
+    @CacheEvict(value = "exportRecordById", key = "#id")
     public ExportResponseDto update(UUID id, ExportUpdateRequestDto updateDto, UUID requestingUserId) {
         validateUpdateDto(updateDto);
         ExportRecord record = findOwnedRecordOrThrow(id, requestingUserId);
@@ -76,7 +79,7 @@ public class ExportRecordService {
                 .map(ExportRecordMapper::toDto)
                 .toList();
     }
-
+    @CacheEvict(value = "exportRecordById", key = "#id")
     public void retry(UUID id, ExportStatus newStatus, UUID requestingUserId) {
         validateStatus(newStatus);
         ExportRecord record = findOwnedRecordOrThrow(id, requestingUserId);
@@ -84,7 +87,7 @@ public class ExportRecordService {
         record.setUpdatedOn(LocalDateTime.now());
         exportRepository.save(record);
     }
-
+    @CacheEvict(value = "exportRecordById", key = "#id")
     public void delete(UUID id, UUID requestingUserId) {
         ExportRecord record = findOwnedRecordOrThrow(id, requestingUserId);
         record.setDeleted(true);
