@@ -7,12 +7,13 @@ import app.web.dto.reportDefinition.ReportDefinitionResponseDto;
 import app.web.dto.reportDefinition.ReportDefinitionUpsertRequestDto;
 import app.web.mapper.reportDefinition.ReportDefinitionMapper;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-
+@Slf4j
 @Service
 @Transactional
 public class ReportDefinitionService {
@@ -32,11 +33,13 @@ public class ReportDefinitionService {
             ReportDefinition entity = existing.get();
             ReportDefinitionMapper.updateEntityFromDto(entity, dto);
             ReportDefinition updated = reportDefinitionRepository.save(entity);
+            log.info("Report definition updated for userId={}", updated.getUserId());
             return ReportDefinitionMapper.toDto(updated);
         }
 
         ReportDefinition entity = ReportDefinitionMapper.toEntity(dto);
         ReportDefinition saved = reportDefinitionRepository.save(entity);
+        log.info("Report definition created for userId={}", saved.getUserId());
         return ReportDefinitionMapper.toDto(saved);
     }
 

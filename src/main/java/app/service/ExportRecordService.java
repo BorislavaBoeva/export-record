@@ -11,6 +11,7 @@ import app.web.dto.exportRecord.ExportResponseDto;
 import app.web.dto.exportRecord.ExportUpdateRequestDto;
 import app.web.mapper.exportRecord.ExportRecordMapper;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class ExportRecordService {
@@ -46,6 +48,7 @@ public class ExportRecordService {
         record.setUpdatedOn(LocalDateTime.now());
         record.setDeleted(false);
         ExportRecord saved = exportRepository.save(record);
+        log.info("Export record created: id={}, userId={}, type={}", saved.getId(), saved.getUserId(), saved.getExportType());
         return ExportRecordMapper.toDto(saved);
     }
 
@@ -62,6 +65,7 @@ public class ExportRecordService {
                 .map(ExportRecordMapper::toDto)
                 .toList();
     }
+
     @CacheEvict(value = "exportRecordById", key = "#id")
     public ExportResponseDto update(UUID id, ExportUpdateRequestDto updateDto, UUID requestingUserId) {
         validateUpdateDto(updateDto);
@@ -69,6 +73,7 @@ public class ExportRecordService {
         ExportRecordMapper.updateEntityFromDto(record, updateDto);
         record.setUpdatedOn(LocalDateTime.now());
         ExportRecord saved = exportRepository.save(record);
+        log.info("Export record updated: id={}", saved.getId());
         return ExportRecordMapper.toDto(saved);
     }
 
@@ -79,6 +84,7 @@ public class ExportRecordService {
                 .map(ExportRecordMapper::toDto)
                 .toList();
     }
+
     @CacheEvict(value = "exportRecordById", key = "#id")
     public void retry(UUID id, ExportStatus newStatus, UUID requestingUserId) {
         validateStatus(newStatus);
@@ -86,19 +92,23 @@ public class ExportRecordService {
         record.setExportStatus(newStatus);
         record.setUpdatedOn(LocalDateTime.now());
         exportRepository.save(record);
+        log.info("Export record retried: id={}, newStatus={}", id, newStatus);
     }
+
     @CacheEvict(value = "exportRecordById", key = "#id")
     public void delete(UUID id, UUID requestingUserId) {
         ExportRecord record = findOwnedRecordOrThrow(id, requestingUserId);
         record.setDeleted(true);
         record.setUpdatedOn(LocalDateTime.now());
         exportRepository.save(record);
+        log.info("Export record soft-deleted: id={}", id);
     }
 
     public void purgeExpiredSoftDeleted() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(30);
         List<ExportRecord> expired = exportRepository.findAllByDeletedTrueAndUpdatedOnBefore(threshold);
         exportRepository.deleteAll(expired);
+        log.info("Cleanup job purged {} expired soft-deleted export records", expired.size());
     }
 
     private ExportRecord findOwnedRecordOrThrow(UUID id, UUID requestingUserId) {
