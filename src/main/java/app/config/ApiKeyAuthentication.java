@@ -1,7 +1,5 @@
 package app.config;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,7 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import java.util.Collection;
 import java.util.List;
 public class ApiKeyAuthentication implements Authentication {
-    private String apiKey;
+    private final String apiKey;
     private boolean authenticated = true;
 
     public ApiKeyAuthentication(String apiKey) {

@@ -3,12 +3,11 @@ package app.scheduler;
 import app.service.ExportRecordService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+
 @Slf4j
-@EnableScheduling
-@Component
+@Service
 public class ExportRecordCleanupJob {
     private final ExportRecordService exportRecordService;
 

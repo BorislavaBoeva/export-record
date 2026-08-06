@@ -18,7 +18,7 @@ as a durable record, enabling history browsing, retrying failed exports, and saf
 - [Configuration](#configuration)
 - [API Endpoints](#api-endpoints)
 - [Security](#security)
-- [Consumed By]
+- [Consumed By](#consumed-by)
 ---
 
 ## Overview
@@ -52,12 +52,19 @@ microservice only records that outcome and exposes history/retry endpoints.
 
 - **Export History Tracking** — Every export attempt (CSV/PDF) is persisted as an `ExportRecord`, independent of
   whether the underlying generation succeeded.
+- **Report Definition Management** — Users can persist and update their preferred export settings (format and
+    whether to include hours) via a dedicated `ReportDefinition` resource. The definition is upserted per user
+    (one definition per `userId`), so saving new preferences automatically replaces any previous ones.
 - **Metadata Editing** — File name and description can be updated after the fact.
 - **Retry Support** — A failed export's status can be updated once the main application successfully regenerates the file.
 - **Duplicate Submission Guard** — Rejects a new export request with 409 Conflict if an identical (same user, same type)
   request was already submitted within the last 5 seconds, protecting against accidental double-clicks.
 - **Soft Delete** — Records are never physically removed; a `deleted` flag hides them from all read operations while
   preserving the audit trail.
+- **Scheduled Cleanup** — A background job (`ExportRecordCleanupJob`) runs periodically (every 30 days) and permanently
+   purges soft-deleted records whose `updatedOn` timestamp is older than 30 days, keeping the database clean.
+- **Caching** — Single-record lookups (`getById`) are cached in an in-memory `ConcurrentMapCache` (`exportRecordById`).
+  The cache is automatically evicted on update, retry, and delete operations.
 - **Ownership-Safe Access** — Every read/write operation validates that the requesting user owns the record. A
   record that doesn't exist and a record that belongs to someone else return an identical `404 Not Found`, so no
   information about record existence leaks to non-owners.
@@ -81,19 +88,33 @@ microservice only records that outcome and exposes history/retry endpoints.
 | Build       | Apache Maven (Maven Wrapper included)      |
 
 ---
-## Domain Model
-ExportRecord
 
-Field	         Type	        Notes
-id	             UUID	        Primary key
-userId	         UUID	        Owner of the record
-fileName	     String         Editable
-description 	 String        	Editable, up to 1000 characters
-exportType	     ExportType	    Enum: CSV, PDF
-exportStatus	 ExportStatus	Enum: SUCCEEDED, FAILED
-exportDate	     LocalDateTime	Set once, at creation
-updatedOn	     LocalDateTime	Refreshed on every writing
-deleted        	boolean	        Soft-delete flag
+## Domain Model
+
+### ExportRecord
+
+| Field        | Type            | Notes                         |
+|--------------|-----------------|-------------------------------|
+| id           | UUID            | Primary key                   |
+| userId       | UUID            | Owner of the record           |
+| fileName     | String          | Editable                      |
+| description  | String          | Editable, up to 1000 chars    |
+| exportType   | ExportType      | Enum: `CSV`, `PDF`            |
+| exportStatus | ExportStatus    | Enum: `SUCCEEDED`, `FAILED`   |
+| exportDate   | LocalDateTime   | Set once, at creation         |
+| updatedOn    | LocalDateTime   | Refreshed on every write      |
+| deleted      | boolean         | Soft-delete flag              |
+
+### ReportDefinition
+
+| Field        | Type       | Notes                                            |
+|--------------|------------|--------------------------------------------------|
+| id           | UUID       | Primary key                                      |
+| userId       | UUID       | Unique per user (one definition per user)        |
+| format       | ExportType | Enum: `CSV`, `PDF` — the user's preferred format |
+| includeHours | boolean    | Whether to include hours in the exported report  |
+
+---
 
 ## Error Handling & Validation
 
@@ -103,14 +124,25 @@ Validation failures return a structured `400 Bad Request` with per-field error m
 Business rules are enforced in the service layer through a custom exception hierarchy:
 
 - `ApplicationException` (base)
-    - `EntityNotFoundException`
-    - `ExportRecordNotFoundException`
-    - `UnauthorizedActionException`
-    - `DuplicateExportException`
+  - `EntityNotFoundException` — record not found, soft-deleted, or not owned by the requesting user (→ `404 Not Found`)
+  - `NullArgumentException` — a required argument (ID, userId, DTO, status) was `null` (→ `400 Bad Request`)
+  - `UnauthorizedActionException` — forbidden action (→ `403 Forbidden`)
+  - `DuplicateExportException` — duplicate export submission within the dedup window (→ `409 Conflict`)
 
 A centralized `GlobalExceptionHandler` (`@RestControllerAdvice`) maps every exception type to a consistent JSON
-`ErrorResponse` shape (`timestamp`, `status`, `error`, `message`, `path`, `fieldErrors`), covering not-found,
-validation, malformed request body, missing/invalid request parameters, and unexpected errors.
+`ErrorResponse` shape (`timestamp`, `status`, `error`, `message`, `path`, `fieldErrors`), covering:
+
+| Exception                                 | HTTP Status                 |
+|-------------------------------------------|-----------------------------|
+| `EntityNotFoundException`                 | `404 Not Found`             |
+| `UnauthorizedActionException`             | `403 Forbidden`             |
+| `DuplicateExportException`                | `409 Conflict`              |
+| `ApplicationException` (catch-all base)   | `400 Bad Request`           |
+| `MethodArgumentNotValidException`         | `400 Bad Request`           |
+| `MissingServletRequestParameterException` | `400 Bad Request`           |
+| `MethodArgumentTypeMismatchException`     | `400 Bad Request`           |
+| `HttpMessageNotReadableException`         | `400 Bad Request`           |
+| Any other `Exception`                     | `500 Internal Server Error` |
 
 **Note:** authentication failures (missing/invalid API key) are handled earlier in the filter chain, before
 `GlobalExceptionHandler` can intercept them, and therefore return a simpler JSON error shape.
@@ -126,20 +158,38 @@ src/main/java/app/
 │   ├── SecurityConfig.java              # API key auth filter chain, stateless sessions
 │   ├── ApiKeyAuthentication.java        # Custom Authentication implementation
 │   └── ApiKeyAuthenticationFilter.java  # Validates X-API-Key header on every request
-├── exception/                           # Custom exception hierarchy + GlobalExceptionHandler + ErrorResponse
+│   └── CacheConfig.java                # ConcurrentMapCacheManager for exportRecordById
+├── exception/          
+│   ├── ApplicationException.java        # Base exception
+│   ├── EntityNotFoundException.java     # 404 — record not found / not owned
+│   ├── NullArgumentException.java       # 400 — null required argument
+│   ├── UnauthorizedActionException.java # 403 — forbidden action
+│   ├── DuplicateExportException.java    # 409 — duplicate export within dedup window
+│   ├── ErrorResponse.java              # Structured JSON error body
+│   └── GlobalExceptionHandler.java     # @RestControllerAdvice mapping exceptions → HTTP responses
 ├── model/
 │   ├── ExportRecord.java                # Domain entity
+│   ├── ReportDefinition.java            # User's preferred export settings entity
 │   ├── ExportType.java                  # Enum: CSV, PDF
 │   └── ExportStatus.java                # Enum: SUCCEEDED, FAILED
 ├── repository/
 │   └── ExportRecordRepository.java
+│   └── ReportDefinitionRepository.java
+├── scheduler/
+│   └── ExportRecordCleanupJob.java      # Purges soft-deleted records older than 30 days
 ├── service/
 │   └── ExportRecordService.java
+│   └── ReportDefinitionService.java
 └── web/
     ├── ExportRecordController.java
-    ├── dto/                             # ExportCreateRequestDto, ExportUpdateRequestDto, ExportResponseDto
+    ├── dto/
+    │   ├── exportRecord/                # ExportCreateRequestDto, ExportUpdateRequestDto, ExportResponseDto
+    │   └── reportDefinition/            # ReportDefinitionUpsertRequestDto, ReportDefinitionResponseDto
     └── mapper/
-        └── ExportRecordMapper.java
+        ├── exportRecord/
+        │   └── ExportRecordMapper.java
+        └── reportDefinition/
+            └── ReportDefinitionMapper.java
 
 src/main/resources/
 └── application.properties
@@ -219,6 +269,11 @@ the authenticated user).
 
 A record that doesn't exist, is soft-deleted, or belongs to another user all returns an identical `404 Not Found`,
 by design — this prevents leaking information about which record IDs exist to a non-owner.
+
+Report Definition Endpoints
+Method Endpoint                 Status   Description
+POST /api/v1/reportDefinition   200 OK   Upsert (create or update) the user's report definition (format, includeHours)
+GET /api/v1/reportDefinition    200 OK   List all report definitions
 
 ---
 

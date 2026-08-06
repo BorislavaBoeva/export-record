@@ -4,11 +4,10 @@ import app.model.ExportRecord;
 import app.web.dto.exportRecord.ExportCreateRequestDto;
 import app.web.dto.exportRecord.ExportResponseDto;
 import app.web.dto.exportRecord.ExportUpdateRequestDto;
-import lombok.NoArgsConstructor;
+import lombok.experimental.UtilityClass;
 
-@NoArgsConstructor
+@UtilityClass
 public class ExportRecordMapper {
-    // CreateDto -> Entity
     public static ExportRecord toEntity(ExportCreateRequestDto dto) {
         return ExportRecord.builder()
                 .userId(dto.getUserId())
@@ -19,7 +18,6 @@ public class ExportRecordMapper {
                 .build();
     }
 
-    // Entity -> Response DTO
     public static ExportResponseDto toDto(ExportRecord entity) {
         return ExportResponseDto.builder()
                 .id(entity.getId())
@@ -34,7 +32,6 @@ public class ExportRecordMapper {
                 .build();
     }
 
-    // UpdateDto -> existing Entity (partial update)
     public static void updateEntityFromDto(ExportRecord entity, ExportUpdateRequestDto dto) {
         entity.setFileName(dto.getFileName());
         entity.setDescription(dto.getDescription());

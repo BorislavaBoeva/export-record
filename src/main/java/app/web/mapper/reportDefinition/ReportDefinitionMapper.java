@@ -3,9 +3,9 @@ package app.web.mapper.reportDefinition;
 import app.model.ReportDefinition;
 import app.web.dto.reportDefinition.ReportDefinitionResponseDto;
 import app.web.dto.reportDefinition.ReportDefinitionUpsertRequestDto;
-import lombok.NoArgsConstructor;
+import lombok.experimental.UtilityClass;
 
-@NoArgsConstructor
+@UtilityClass
 public class ReportDefinitionMapper {
     public static ReportDefinition toEntity(ReportDefinitionUpsertRequestDto dto) {
         return ReportDefinition.builder()
