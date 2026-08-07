@@ -19,17 +19,13 @@ import java.util.UUID;
 public class ExportCreateRequestDto {
     @NotNull(message = "User ID is required")
     private UUID userId;
-
     @NotBlank(message = "File name is required")
     @Size(min = 3, max = 255, message = "File name must be between 3 and 255 characters")
     private String fileName;
-
     @Size(max = 1000, message = "Description cannot exceed 1000 characters")
     private String description;
-
     @NotNull(message = "Export type is required")
     private ExportType exportType;
-
     @NotNull(message = "Export status is required")
     private ExportStatus exportStatus;
 }

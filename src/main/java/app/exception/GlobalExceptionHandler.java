@@ -77,7 +77,6 @@ public class GlobalExceptionHandler {
                 .path(path)
                 .fieldErrors(fieldErrors)
                 .build();
-
         return ResponseEntity.status(status).body(body);
     }
 
@@ -89,6 +88,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 null);
     }
+
     @ExceptionHandler(DuplicateExportException.class)
     public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateExportException ex,
                                                          HttpServletRequest request) {

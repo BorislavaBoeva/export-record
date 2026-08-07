@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -35,7 +34,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @WebMvcTest(ExportRecordController.class)
 @Import({SecurityConfig.class, ApiKeyAuthenticationFilter.class, SecurityTestConfig.class})
-@TestPropertySource(properties = "export-record.service.api-key=api-key")
 public class ExportRecordControllerTest {
     @MockitoBean
     private ExportRecordService exportRecordService;
@@ -51,7 +49,6 @@ public class ExportRecordControllerTest {
         //Given
         MockHttpServletRequestBuilder request = get("/api/v1/exportRecord")
                 .param("userId", UUID.randomUUID().toString());
-
         //When & Then
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isUnauthorized());
@@ -62,7 +59,6 @@ public class ExportRecordControllerTest {
         //Given
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", "wrong-key");
-
         MockHttpServletRequestBuilder request = get("/api/v1/exportRecord")
                 .headers(headers)
                 .param("userId", UUID.randomUUID().toString());
@@ -115,7 +111,6 @@ public class ExportRecordControllerTest {
         //Given
         ExportResponseDto responseDto = getExportResponseDto();
         when(exportRecordService.getById(any(), any())).thenReturn(responseDto);
-
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
         MockHttpServletRequestBuilder request = get("/api/v1/exportRecord/{id}", UUID.randomUUID())
@@ -130,25 +125,18 @@ public class ExportRecordControllerTest {
                 .andExpect(jsonPath("$.fileName").isNotEmpty());
     }
 
-    // ---- getHistory ----
-
     @Test
     public void getHistory_whenValid_returns200() throws Exception {
-
         //Given
         List<ExportResponseDto> responses = List.of(getExportResponseDto(), getExportResponseDto());
-
         when(exportRecordService.getHistory(any())).thenReturn(responses);
-
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
-
         MockHttpServletRequestBuilder request = get("/api/v1/exportRecord")
                 .headers(headers)
                 .param("userId", UUID.randomUUID().toString());
 
         //When & Then
-
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
@@ -156,25 +144,18 @@ public class ExportRecordControllerTest {
                 .andExpect(jsonPath("$", hasSize(2)));
     }
 
-    // ---- getFailedByUser ----
-
     @Test
     public void getFailedByUser_whenValid_returns200() throws Exception {
-
         //Given
         List<ExportResponseDto> responses = List.of(getExportResponseDto());
-
         when(exportRecordService.getFailedByUserId(any())).thenReturn(responses);
-
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
-
         MockHttpServletRequestBuilder request = get("/api/v1/exportRecord/failed")
                 .headers(headers)
                 .param("userId", UUID.randomUUID().toString());
 
         //When & Then
-
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
@@ -182,20 +163,14 @@ public class ExportRecordControllerTest {
                 .andExpect(jsonPath("$", hasSize(1)));
     }
 
-    // ---- update ----
-
     @Test
     public void update_whenValid_returns200() throws Exception {
-
         //Given
         ExportUpdateRequestDto updateDto = getExportUpdateRequestDto();
         ExportResponseDto responseDto = getExportResponseDto();
-
         when(exportRecordService.update(any(), any(), any())).thenReturn(responseDto);
-
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
-
         MockHttpServletRequestBuilder request = put("/api/v1/exportRecord/{id}", UUID.randomUUID())
                 .headers(headers)
                 .param("userId", UUID.randomUUID().toString())
@@ -203,48 +178,37 @@ public class ExportRecordControllerTest {
                 .content(jsonMapper.writeValueAsString(updateDto));
 
         //When & Then
-
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").isNotEmpty());
     }
 
-    // ---- retry ----
-
     @Test
     public void retry_whenValid_returns202() throws Exception {
-
         //Given
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
-
         MockHttpServletRequestBuilder request = put("/api/v1/exportRecord/{id}/retry", UUID.randomUUID())
                 .headers(headers)
                 .param("status", ExportStatus.SUCCEEDED.name())
                 .param("userId", UUID.randomUUID().toString());
 
         //When & Then
-
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isAccepted());
     }
 
-    // ---- delete ----
-
     @Test
     public void delete_whenValid_returns202() throws Exception {
-
         //Given
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-API-Key", SecurityTestConfig.TEST_API_KEY);
-
         MockHttpServletRequestBuilder request = delete("/api/v1/exportRecord/{id}", UUID.randomUUID())
                 .headers(headers)
                 .param("userId", UUID.randomUUID().toString());
 
         //When & Then
-
         mockMvc.perform(request)
                 .andExpect(MockMvcResultMatchers.status().isAccepted());
     }

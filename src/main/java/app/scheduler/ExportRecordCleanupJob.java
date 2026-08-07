@@ -15,6 +15,7 @@ public class ExportRecordCleanupJob {
     public ExportRecordCleanupJob(ExportRecordService exportRecordService) {
         this.exportRecordService = exportRecordService;
     }
+
     @Scheduled(fixedDelay = 2592000000L)
     public void purgeOldSoftDeletedRecords() {
         log.info("Export record cleanup job started");

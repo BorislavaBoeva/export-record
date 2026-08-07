@@ -24,4 +24,4 @@ public class ReportDefinition {
     @Enumerated(EnumType.STRING)
     private ExportType format;
     private boolean includeHours;
-    }
+}

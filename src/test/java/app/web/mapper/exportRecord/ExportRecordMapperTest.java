@@ -13,8 +13,8 @@ public class ExportRecordMapperTest {
     @Test
     public void testToEntity_mapsAllFields() {
         ExportCreateRequestDto dto = getExportCreateRequestDto();
-
         ExportRecord result = ExportRecordMapper.toEntity(dto);
+
         assertEquals(dto.getUserId(), result.getUserId());
         assertEquals(dto.getFileName(), result.getFileName());
         assertEquals(dto.getDescription(), result.getDescription());
@@ -25,8 +25,8 @@ public class ExportRecordMapperTest {
     @Test
     public void testToDto_mapsAllFields() {
         ExportRecord entity = getExportRecord();
-
         ExportResponseDto result = ExportRecordMapper.toDto(entity);
+
         assertEquals(entity.getId(), result.getId());
         assertEquals(entity.getExportType(), result.getExportType());
         assertEquals(entity.getFileName(), result.getFileName());
@@ -42,8 +42,8 @@ public class ExportRecordMapperTest {
     public void testUpdateEntityFromDto_updatesFields() {
         ExportRecord entity = getExportRecord();
         ExportUpdateRequestDto dto = getExportUpdateRequestDto();
-
         ExportRecordMapper.updateEntityFromDto(entity, dto);
+
         assertEquals(dto.getFileName(), entity.getFileName());
         assertEquals(dto.getDescription(), entity.getDescription());
         assertEquals(dto.getExportType(), entity.getExportType());

@@ -16,6 +16,7 @@ as a durable record, enabling history browsing, retrying failed exports, and saf
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
+- [Testing](#testing)
 - [API Endpoints](#api-endpoints)
 - [Security](#security)
 - [Consumed By](#consumed-by)
@@ -75,17 +76,20 @@ microservice only records that outcome and exposes history/retry endpoints.
 
 ## Tech Stack
 
-| Layer       | Technology                                 |
-|-------------|--------------------------------------------|
-| Language    | Java 21                                    |
-| Framework   | Spring Boot 4.0.6                          |
-| Web         | Spring Web (REST, JSON)                    |
-| Persistence | Spring Data JPA / Hibernate                |
-| Database    | MySQL 8+ (separate schema from main app)   |
-| Security    | Spring Security (stateless, API key)       |
-| Validation  | Jakarta Bean Validation                    |
-| Boilerplate | Lombok                                     |
-| Build       | Apache Maven (Maven Wrapper included)      |
+| Layer       | Technology                                |
+|-------------|-------------------------------------------|
+| Language    | Java 21                                   |
+| Framework   | Spring Boot 4.0.6                         |
+| Web         | Spring Web (REST, JSON)                   |
+| Persistence | Spring Data JPA / Hibernate               |
+| Database    | MySQL 8+ (separate schema from main app)  |
+| Security    | Spring Security (stateless, API key)      |
+| Validation  | Jakarta Bean Validation                   |
+| Caching     | Spring Cache (ConcurrentMapCacheManager)  |
+| Scheduling  | Spring @Scheduled (fixedDelay-based)      |
+| Testing     | JUnit 5, Mockito, Spring Boot Test, H2    |
+| Boilerplate | Lombok                                    |
+| Build       | Apache Maven (Maven Wrapper included)     |
 
 ---
 
@@ -126,7 +130,6 @@ Business rules are enforced in the service layer through a custom exception hier
 - `ApplicationException` (base)
   - `EntityNotFoundException` — record not found, soft-deleted, or not owned by the requesting user (→ `404 Not Found`)
   - `NullArgumentException` — a required argument (ID, userId, DTO, status) was `null` (→ `400 Bad Request`)
-  - `UnauthorizedActionException` — forbidden action (→ `403 Forbidden`)
   - `DuplicateExportException` — duplicate export submission within the dedup window (→ `409 Conflict`)
 
 A centralized `GlobalExceptionHandler` (`@RestControllerAdvice`) maps every exception type to a consistent JSON
@@ -135,7 +138,6 @@ A centralized `GlobalExceptionHandler` (`@RestControllerAdvice`) maps every exce
 | Exception                                 | HTTP Status                 |
 |-------------------------------------------|-----------------------------|
 | `EntityNotFoundException`                 | `404 Not Found`             |
-| `UnauthorizedActionException`             | `403 Forbidden`             |
 | `DuplicateExportException`                | `409 Conflict`              |
 | `ApplicationException` (catch-all base)   | `400 Bad Request`           |
 | `MethodArgumentNotValidException`         | `400 Bad Request`           |
@@ -163,7 +165,6 @@ src/main/java/app/
 │   ├── ApplicationException.java        # Base exception
 │   ├── EntityNotFoundException.java     # 404 — record not found / not owned
 │   ├── NullArgumentException.java       # 400 — null required argument
-│   ├── UnauthorizedActionException.java # 403 — forbidden action
 │   ├── DuplicateExportException.java    # 409 — duplicate export within dedup window
 │   ├── ErrorResponse.java              # Structured JSON error body
 │   └── GlobalExceptionHandler.java     # @RestControllerAdvice mapping exceptions → HTTP responses
@@ -182,14 +183,29 @@ src/main/java/app/
 │   └── ReportDefinitionService.java
 └── web/
     ├── ExportRecordController.java
+    ├── ReportDefinitionController.java
     ├── dto/
     │   ├── exportRecord/                # ExportCreateRequestDto, ExportUpdateRequestDto, ExportResponseDto
     │   └── reportDefinition/            # ReportDefinitionUpsertRequestDto, ReportDefinitionResponseDto
     └── mapper/
-        ├── exportRecord/
-        │   └── ExportRecordMapper.java
-        └── reportDefinition/
-            └── ReportDefinitionMapper.java
+        ├── exportRecord/ExportRecordMapper.java
+        └── reportDefinition/ReportDefinitionMapper.java
+        
+src/test/java/app/
+├── ApplicationTests.java                # Smoke test — verifies context loads
+├── util/
+│   └── ExportTestFactory.java           # Builder methods for test data
+├── web/
+│   ├── SecurityTestConfig.java          # Test-only config with API key constant
+│   ├── ExportRecordControllerTest.java  # API test — @WebMvcTest
+│   └── mapper/
+│       └── exportRecord/
+│           └── ExportRecordMapperTest.java  # Unit test — pure JUnit
+└── service/
+    └── ExportRecordServiceItTest.java   # Integration test — @SpringBootTest + H2
+
+src/test/resources/
+└── application-test.properties          # H2 in-memory database config for tests
 
 src/main/resources/
 └── application.properties
@@ -205,19 +221,29 @@ src/main/resources/
 - MySQL 8+ running locally
 - Maven (or use the included `mvnw` wrapper)
 - The main Skill Progress Tracker application (this service is not usefully standalone)
+- A DB_USERNAME environment variable set for the MySQL username
+- A DB_PASSWORD environment variable set for the MySQL password
+- An API_KEY environment variable set (must match the main application's Feign client configuration)
+- The main Skill Progress Tracker application (this service is not usefully standalone)
 
 **Steps**
 
 1. Configure the database and API key — see [Configuration](#configuration) below.
-
-2. Run the application
+2. Set environment variables
    ```bash
-   API_KEY=your-shared-secret ./mvnw spring-boot:run
+   export DB_USERNAME=your-db-username
+   export DB_PASSWORD=your-db-password
+   export API_KEY=your-secret-api-key
+   ```
+   
+3. Run the application
+   ```bash
+   ./mvnw spring-boot:run
    # or on Windows
-   set API_KEY=your-shared-secret && mvnw.cmd spring-boot:run
+   mvnw.cmd spring-boot:run
    ```
 
-3. The service starts on
+4. The service starts on
    ```
    http://localhost:8081
    ```
@@ -236,8 +262,8 @@ server.port=8081
 
 # Database connection (separate schema from the main application)
 spring.datasource.url=jdbc:mysql://localhost:3306/csv_export?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-spring.datasource.username=YOUR_DB_USERNAME
-spring.datasource.password=YOUR_DB_PASSWORD
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
 
 # Schema management (use 'validate' or 'none' in production)
 spring.jpa.hibernate.ddl-auto=update
@@ -250,6 +276,14 @@ The `API_KEY` value must be identical to the one configured on the main applicat
 request will be rejected with `401 Unauthorized`.
 
 ---
+
+## Testing
+
+Unit, Integration, and API tests using JUnit 5, Mockito, and Spring Boot Test with H2 in-memory database.
+  ```bash
+  ./mvnw test
+  ```
+Line coverage: 75% | Branch coverage: 75%
 
 ## API Endpoints
 
@@ -270,10 +304,12 @@ the authenticated user).
 A record that doesn't exist, is soft-deleted, or belongs to another user all returns an identical `404 Not Found`,
 by design — this prevents leaking information about which record IDs exist to a non-owner.
 
-Report Definition Endpoints
-Method Endpoint                 Status   Description
-POST /api/v1/reportDefinition   200 OK   Upsert (create or update) the user's report definition (format, includeHours)
-GET /api/v1/reportDefinition    200 OK   List all report definitions
+## Report Definition Endpoints
+
+| Method | Endpoint                   | Status | Description                                                                   |
+|--------|----------------------------|--------|-------------------------------------------------------------------------------|
+| POST   | `/api/v1/reportDefinition` | 200 OK | Upsert (create or update) the user's report definition (format, includeHours) |
+| GET    | `/api/v1/reportDefinition` | 200 OK | List all report definitions                                                   |
 
 ---
 

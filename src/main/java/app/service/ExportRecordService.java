@@ -114,14 +114,12 @@ public class ExportRecordService {
     private ExportRecord findOwnedRecordOrThrow(UUID id, UUID requestingUserId) {
         validateId(id);
         validateUserId(requestingUserId);
-
         ExportRecord record = exportRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Export record not found"));
 
         if (record.isDeleted()) {
             throw new EntityNotFoundException("Export record not found");
         }
-        // Return 404, not 403, to avoid confirming the record's existence to a non-owner
         if (!record.getUserId().equals(requestingUserId)) {
             throw new EntityNotFoundException("Export record not found");
         }

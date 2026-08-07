@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+
 @Slf4j
 @Service
 @Transactional
@@ -26,9 +27,7 @@ public class ReportDefinitionService {
 
     public ReportDefinitionResponseDto upsert(ReportDefinitionUpsertRequestDto dto) {
         validateDto(dto);
-
         Optional<ReportDefinition> existing = reportDefinitionRepository.findByUserId(dto.getUserId());
-
         if (existing.isPresent()) {
             ReportDefinition entity = existing.get();
             ReportDefinitionMapper.updateEntityFromDto(entity, dto);
