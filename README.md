@@ -1,6 +1,6 @@
 # export-record
 
-CSV Export Microservice
+Export Record Microservice
 is A standalone Spring Boot REST microservice that tracks export history for the Skill Progress Tracker application.
 It does not generate files itself — the main application generates CSV/PDF exports and registers each attempt here
 as a durable record, enabling history browsing, retrying failed exports, and safe ownership checks.
@@ -36,7 +36,7 @@ every record is created, listed, edited, retried, and deleted directly in respon
 ```
 ┌─────────────────┐         Feign Client          ┌──────────────────┐
 │   Main App      │   ──────────────────────────▶ │   export-record  │
-│ (skill-progress │   POST/GET/PUT/DELETE         │  microservice    │
+│ (skill-progress │   POST/GET/PUT/DELETE         │   microservice   │
 │  tracker)       │   /api/v1/exportRecord/**     │                  │
 │                 │◀───────────────────────────── │                  │
 └─────────────────┘         JSON responses        └──────────────────┘
@@ -157,29 +157,29 @@ A centralized `GlobalExceptionHandler` (`@RestControllerAdvice`) maps every exce
 src/main/java/app/
 ├── Application.java
 ├── config/
-│   ├── SecurityConfig.java              # API key auth filter chain, stateless sessions
 │   ├── ApiKeyAuthentication.java        # Custom Authentication implementation
-│   └── ApiKeyAuthenticationFilter.java  # Validates X-API-Key header on every request
-│   └── CacheConfig.java                # ConcurrentMapCacheManager for exportRecordById
+│   ├── ApiKeyAuthenticationFilter.java  # Validates X-API-Key header on every request
+│   ├── CacheConfig.java                 # ConcurrentMapCacheManager for exportRecordById
+│   └──SecurityConfig.java               # API key auth filter chain, stateless sessions
 ├── exception/          
 │   ├── ApplicationException.java        # Base exception
 │   ├── EntityNotFoundException.java     # 404 — record not found / not owned
 │   ├── NullArgumentException.java       # 400 — null required argument
 │   ├── DuplicateExportException.java    # 409 — duplicate export within dedup window
-│   ├── ErrorResponse.java              # Structured JSON error body
-│   └── GlobalExceptionHandler.java     # @RestControllerAdvice mapping exceptions → HTTP responses
+│   ├── ErrorResponse.java               # Structured JSON error body
+│   └── GlobalExceptionHandler.java      # @RestControllerAdvice mapping exceptions → HTTP responses
 ├── model/
 │   ├── ExportRecord.java                # Domain entity
 │   ├── ReportDefinition.java            # User's preferred export settings entity
 │   ├── ExportType.java                  # Enum: CSV, PDF
 │   └── ExportStatus.java                # Enum: SUCCEEDED, FAILED
 ├── repository/
-│   └── ExportRecordRepository.java
+│   ├── ExportRecordRepository.java
 │   └── ReportDefinitionRepository.java
 ├── scheduler/
 │   └── ExportRecordCleanupJob.java      # Purges soft-deleted records older than 30 days
 ├── service/
-│   └── ExportRecordService.java
+│   ├──ExportRecordService.java
 │   └── ReportDefinitionService.java
 └── web/
     ├── ExportRecordController.java
@@ -224,15 +224,14 @@ src/main/resources/
 - A `DB_USERNAME` environment variable set for the MySQL username
 - A `DB_PASSWORD` environment variable set for the MySQL password
 - An `API_KEY` environment variable set (must match the main application's Feign client configuration)
-- The main Skill Progress Tracker application (this service is not usefully standalone)
 
 **Steps**
 
 1. Configure the database and API key — see [Configuration](#configuration) below.
 2. Set environment variables
    ```bash
-   export DB_USERNAME=root
-   export DB_PASSWORD=123456
+   export DB_USERNAME=<your-db-username>
+   export DB_PASSWORD=<your-db-password>
    export API_KEY=my-secret-api-key
    ```
    
