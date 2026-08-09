@@ -1,5 +1,6 @@
 package app.config;
 
+import lombok.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -16,6 +17,7 @@ public class ApiKeyAuthentication implements Authentication {
     }
 
     @Override
+    @NonNull
     public Collection<GrantedAuthority> getAuthorities() {
         return List.of();
     }

@@ -43,12 +43,12 @@ public class ExportRecordService {
         if (recentDuplicateExists) {
             throw new DuplicateExportException("An export request was already submitted moments ago");
         }
-        ExportRecord record = ExportRecordMapper.toEntity(createDto);
-        record.setExportDate(LocalDateTime.now());
-        record.setUpdatedOn(LocalDateTime.now());
-        record.setDeleted(false);
-        ExportRecord saved = exportRepository.save(record);
-        log.info("Export record created: id={}, userId={}, type={}", saved.getId(), saved.getUserId(), saved.getExportType());
+        ExportRecord exportRecord = ExportRecordMapper.toEntity(createDto);
+        exportRecord.setExportDate(LocalDateTime.now());
+        exportRecord.setUpdatedOn(LocalDateTime.now());
+        exportRecord.setDeleted(false);
+        ExportRecord saved = exportRepository.save(exportRecord);
+        log.info("Export exportRecord created: id={}, userId={}, type={}", saved.getId(), saved.getUserId(), saved.getExportType());
         return ExportRecordMapper.toDto(saved);
     }
 

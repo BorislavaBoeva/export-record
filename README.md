@@ -79,7 +79,7 @@ microservice only records that outcome and exposes history/retry endpoints.
 | Layer       | Technology                                |
 |-------------|-------------------------------------------|
 | Language    | Java 21                                   |
-| Framework   | Spring Boot 4.0.6                         |
+| Framework   | Spring Boot 4.1.0                         |
 | Web         | Spring Web (REST, JSON)                   |
 | Persistence | Spring Data JPA / Hibernate               |
 | Database    | MySQL 8+ (separate schema from main app)  |
@@ -221,9 +221,9 @@ src/main/resources/
 - MySQL 8+ running locally
 - Maven (or use the included `mvnw` wrapper)
 - The main Skill Progress Tracker application (this service is not usefully standalone)
-- A DB_USERNAME environment variable set for the MySQL username
-- A DB_PASSWORD environment variable set for the MySQL password
-- An API_KEY environment variable set (must match the main application's Feign client configuration)
+- A `DB_USERNAME` environment variable set for the MySQL username
+- A `DB_PASSWORD` environment variable set for the MySQL password
+- An `API_KEY` environment variable set (must match the main application's Feign client configuration)
 - The main Skill Progress Tracker application (this service is not usefully standalone)
 
 **Steps**
@@ -231,9 +231,9 @@ src/main/resources/
 1. Configure the database and API key — see [Configuration](#configuration) below.
 2. Set environment variables
    ```bash
-   export DB_USERNAME=your-db-username
-   export DB_PASSWORD=your-db-password
-   export API_KEY=your-secret-api-key
+   export DB_USERNAME=root
+   export DB_PASSWORD=123456
+   export API_KEY=my-secret-api-key
    ```
    
 3. Run the application
@@ -257,11 +257,11 @@ The database schema is created automatically by Hibernate on the first launch.
 Edit `src/main/resources/application.properties`:
 
 ```properties
-spring.application.name=csv-export
+spring.application.name=export-record
 server.port=8081
 
 # Database connection (separate schema from the main application)
-spring.datasource.url=jdbc:mysql://localhost:3306/csv_export?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.url=jdbc:mysql://localhost:3306/export_record?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
 spring.datasource.username=${DB_USERNAME}
 spring.datasource.password=${DB_PASSWORD}
 
@@ -269,7 +269,7 @@ spring.datasource.password=${DB_PASSWORD}
 spring.jpa.hibernate.ddl-auto=update
 
 # Shared secret with the main application — must match its Feign client configuration
-export.service.api-key=${API_KEY}
+export-record.service.api-key=${API_KEY}
 ```
 
 The `API_KEY` value must be identical to the one configured on the main application's Feign client, or every
@@ -287,29 +287,29 @@ Line coverage: 75% | Branch coverage: 75%
 
 ## API Endpoints
 
-All endpoints require the `X-API-Key` header. `userId` is passed as a query parameter on every request (this
-service has no session/login concept of its own — the caller is always the main application, which already knows
-the authenticated user).
+All endpoints require the `X-API-Key` header. `userId` is passed as a query parameter (or inside the request body
+for create/upsert) on every request — this service has no session/login concept of its own; the caller is always
+the main application, which already knows the authenticated user.
 
-| Method | Endpoint                    | Status       | Description                                                                                                                              |
-|--------|-----------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| POST   | `/api/v1/export`            | 201 Created  | Register a new export attempt (SUCCEEDED or FAILED)<br/<br/ rejects with 409 Conflict if a duplicate was submitted in the last 5 seconds |
-| GET    | `/api/v1/export/{id}`       | 200 OK       | Get a single export record by ID (owner only)                                                                                            |
-| GET    | `/api/v1/export`            | 200 OK       | List all non-deleted export records for a user                                                                                           |
-| GET    | `/api/v1/export/failed`     | 200 OK       | List only FAILED export records for a user                                                                                               |
-| PUT    | `/api/v1/export/{id}`       | 200 OK       | Update editable fields (fileName, description, exportType)                                                                               |
-| PUT    | `/api/v1/export/{id}/retry` | 202 Accepted | Update the status of a record after a retry attempt                                                                                      |
-| DELETE | `/api/v1/export/{id}`       | 202 Accepted | Soft-delete an export record (owner only)                                                                                                |
+| Method | Endpoint                          | Status       | Description                                                                                                                              |
+|--------|-----------------------------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `/api/v1/exportRecord`            | 201 Created  | Register a new export attempt (SUCCEEDED or FAILED); rejects with 409 Conflict if a duplicate was submitted in the last 5 seconds        |
+| GET    | `/api/v1/exportRecord/{id}`       | 200 OK       | Get a single export record by ID (owner only)                                                                                            |
+| GET    | `/api/v1/exportRecord`            | 200 OK       | List all non-deleted export records for a user                                                                                           |
+| GET    | `/api/v1/exportRecord/failed`     | 200 OK       | List only FAILED export records for a user                                                                                               |
+| PUT    | `/api/v1/exportRecord/{id}`       | 200 OK       | Update editable fields (fileName, description, exportType)                                                                               |
+| PUT    | `/api/v1/exportRecord/{id}/retry` | 202 Accepted | Update the status of a record after a retry attempt                                                                                      |
+| DELETE | `/api/v1/exportRecord/{id}`       | 202 Accepted | Soft-delete an export record (owner only)                                                                                                |
 
 A record that doesn't exist, is soft-deleted, or belongs to another user all returns an identical `404 Not Found`,
 by design — this prevents leaking information about which record IDs exist to a non-owner.
 
 ## Report Definition Endpoints
 
-| Method | Endpoint                   | Status | Description                                                                   |
-|--------|----------------------------|--------|-------------------------------------------------------------------------------|
-| POST   | `/api/v1/reportDefinition` | 200 OK | Upsert (create or update) the user's report definition (format, includeHours) |
-| GET    | `/api/v1/reportDefinition` | 200 OK | List all report definitions                                                   |
+| Method | Endpoint                   | Status | Description                                                                              |
+|--------|----------------------------|--------|------------------------------------------------------------------------------------------|
+| POST   | `/api/v1/reportDefinition` | 200 OK | Upsert (create or update) the user's report definition (userId, format, includeHours)    |
+| GET    | `/api/v1/reportDefinition` | 200 OK | List all report definitions                                                              |
 
 ---
 
