@@ -232,7 +232,7 @@ src/main/resources/
    ```bash
    export DB_USERNAME=<your-db-username>
    export DB_PASSWORD=<your-db-password>
-   export API_KEY=my-secret-api-key
+   export API_KEY=<your-secret-api-key>
    ```
    
 3. Run the application
